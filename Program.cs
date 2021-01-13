@@ -11,6 +11,7 @@ namespace TestTask
         public ListNode Rand;
         public ListNode Next;
         public string Data;
+        public int Index;
 
         public ListNode(string data)
         {
@@ -31,8 +32,11 @@ namespace TestTask
         public ListNode Add(string data)
         {
             var newNode = new ListNode(data);
+            newNode.Index = Tail == null ? 0 : Tail.Index + 1;
             if (Head == null)
+            {
                 Head = newNode;
+            }
             else
             {
                 Tail.Next = newNode;
@@ -77,23 +81,6 @@ namespace TestTask
             return node;
         }
 
-        /// <summary>
-        /// Поиск индекса элемента от начала.
-        /// </summary>
-        /// <param name="node">Элемент для поиска</param>
-        /// <returns>Индекс элемента или -1</returns>
-        public int IndexOf(ListNode node)
-        {
-            if (node == null) return -1;
-            var index = 0;
-            foreach (var temp in this)
-            {
-                if (temp == node) return index;
-                index++;
-            }
-            return -1;
-        }
-
         // Метод расширение для обохода списка от начала
         public IEnumerator<ListNode> GetEnumerator()
         {
@@ -108,39 +95,40 @@ namespace TestTask
         public void Serialize(FileStream s)
         {
             using (var sw = new StreamWriter(s))
+            {
+                sw.WriteLine(Count);
                 foreach (var node in this)
                 {
                     //конвертация в base64, для того чтобы представить данные в одну строку.
                     var dataAsBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(node.Data));
                     sw.WriteLine(dataAsBase64);
-                    //получение индекса случайного элемента от начала списка
-                    var randIndex = IndexOf(node.Rand);
-                    sw.WriteLine(randIndex);
+                    //получение индекса случайного элемента или -1 если Rand null
+                    sw.WriteLine(node.Rand?.Index ?? -1);
                 }
+            }
         }
 
         public void Deserialize(FileStream s)
         {
             Clear();
-            //словарь для хранения индекса случайного элемента
-            var randIndexes = new Dictionary<ListNode, int>();
             using (var reader = new StreamReader(s))
             {
+                var count = int.Parse(reader.ReadLine());
+                var nodes = new ListNode[count];
                 //считываем файл построчно до конца
                 while (reader.Peek() >= 0)
                 {
                     var line = reader.ReadLine();
                     //ковертируем данные в исходный формат
                     var node = Add(Encoding.UTF8.GetString(Convert.FromBase64String(line)));
+                    nodes[Count - 1] = node;
                     //считываем индекс случайного элемента
                     var randIndex = int.Parse(reader.ReadLine());
                     //если индекс равен -1, значит не было ссылки на случайный элемент
-                    if (randIndex > -1) randIndexes.Add(node, randIndex);
+                    if (randIndex > -1)
+                        node.Rand = nodes[randIndex];
                 }
             }
-            //восстанавливаем ссылки на случайные элементы
-            foreach (var kvp in randIndexes)
-                kvp.Key.Rand = ElementAt(kvp.Value);
         }
     }
     class Program
@@ -153,7 +141,8 @@ namespace TestTask
             for (int i = 0; i < count; i++)
             {
                 var newNode = listNode.Add("data" + i.ToString());
-                newNode.Rand = listNode.ElementAt(rnd.Next(0, i + 1));
+                if (i % 2 == 0)
+                    newNode.Rand = listNode.ElementAt(rnd.Next(0, i + 1));
             }
             using (var fs = new FileStream("serialized.txt", FileMode.Create))
             {
