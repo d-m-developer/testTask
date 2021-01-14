@@ -11,7 +11,6 @@ namespace TestTask
         public ListNode Rand;
         public ListNode Next;
         public string Data;
-        public int Index;
 
         public ListNode(string data)
         {
@@ -32,7 +31,6 @@ namespace TestTask
         public ListNode Add(string data)
         {
             var newNode = new ListNode(data);
-            newNode.Index = Tail == null ? 0 : Tail.Index + 1;
             if (Head == null)
             {
                 Head = newNode;
@@ -94,16 +92,24 @@ namespace TestTask
 
         public void Serialize(FileStream s)
         {
+            var nodes = new Dictionary<ListNode, int>();
+            var index = 0;
+            foreach (var node in this)
+            {
+                nodes.Add(node, index);
+            }
             using (var sw = new StreamWriter(s))
             {
                 sw.WriteLine(Count);
-                foreach (var node in this)
+                foreach (var kvp in nodes)
                 {
+                    var node = kvp.Key;
                     //конвертация в base64, для того чтобы представить данные в одну строку.
                     var dataAsBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(node.Data));
                     sw.WriteLine(dataAsBase64);
                     //получение индекса случайного элемента или -1 если Rand null
-                    sw.WriteLine(node.Rand?.Index ?? -1);
+                    var randId = node.Rand == null ? -1 : nodes[node.Rand];
+                    sw.WriteLine(randId);
                 }
             }
         }
@@ -115,19 +121,23 @@ namespace TestTask
             {
                 var count = int.Parse(reader.ReadLine());
                 var nodes = new ListNode[count];
+                var nodeRandId = new Dictionary<ListNode, int>();
+                count = 0;
                 //считываем файл построчно до конца
                 while (reader.Peek() >= 0)
                 {
-                    var line = reader.ReadLine();
+                    var data = reader.ReadLine();
                     //ковертируем данные в исходный формат
-                    var node = Add(Encoding.UTF8.GetString(Convert.FromBase64String(line)));
-                    nodes[Count - 1] = node;
+                    var node = Add(Encoding.UTF8.GetString(Convert.FromBase64String(data)));
                     //считываем индекс случайного элемента
-                    var randIndex = int.Parse(reader.ReadLine());
-                    //если индекс равен -1, значит не было ссылки на случайный элемент
-                    if (randIndex > -1)
-                        node.Rand = nodes[randIndex];
+                    var randId = int.Parse(reader.ReadLine());
+                    if (randId > -1)
+                        nodeRandId.Add(node, randId);
+                    nodes[count] = node;
+                    count++;
                 }
+                foreach (var kvp in nodeRandId)
+                    kvp.Key.Rand = nodes[kvp.Value];
             }
         }
     }
@@ -137,21 +147,24 @@ namespace TestTask
         {
             var listNode = new ListRand();
             var rnd = new Random();
-            var count = 100000;
+            var count = 1000000;
+            var nodes = new ListNode[count];
+
             for (int i = 0; i < count; i++)
+                nodes[i] = listNode.Add("data" + i.ToString());
+
+            foreach (var node in listNode)
             {
-                var newNode = listNode.Add("data" + i.ToString());
-                if (i % 2 == 0)
-                    newNode.Rand = listNode.ElementAt(rnd.Next(0, i + 1));
+                if (count % 2 == 0)
+                    node.Rand = nodes[rnd.Next(0, count)];
+                count--;
             }
+
             using (var fs = new FileStream("serialized.txt", FileMode.Create))
-            {
                 listNode.Serialize(fs);
-            }
+
             using (var fs = new FileStream("serialized.txt", FileMode.Open))
-            {
                 listNode.Deserialize(fs);
-            }
         }
     }
 }
