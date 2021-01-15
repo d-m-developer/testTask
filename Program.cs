@@ -54,31 +54,6 @@ namespace TestTask
             Count = 0;
         }
 
-        /// <summary>
-        /// Поиск элемента по индексу
-        /// </summary>
-        /// <param name="index">Индекс элемента</param>
-        /// <returns>Ссылка на элемент</returns>
-        public ListNode ElementAt(int index)
-        {
-            ListNode node;
-            //если значение индекса больше половины списка, то ищем с конца
-            if (index > Count / 2)
-            {
-                node = Tail;
-                for (int i = 0; i < Count - index - 1; i++)
-                    node = node.Prev;
-            }
-            //иначе с начала
-            else
-            {
-                node = Head;
-                for (int i = 0; i < index; i++)
-                    node = node.Next;
-            }
-            return node;
-        }
-
         // Метод расширение для обохода списка от начала
         public IEnumerator<ListNode> GetEnumerator()
         {
